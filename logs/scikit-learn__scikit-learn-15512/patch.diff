@@ -1,0 +1,21 @@
+diff --git a/sklearn/cluster/_affinity_propagation.py b/sklearn/cluster/_affinity_propagation.py
+index 4806afee9..f3da0979a 100644
+--- a/sklearn/cluster/_affinity_propagation.py
++++ b/sklearn/cluster/_affinity_propagation.py
+@@ -152,6 +152,7 @@ def affinity_propagation(S, preference=None, convergence_iter=15, max_iter=200,
+ 
+     ind = np.arange(n_samples)
+ 
++    unconverged = True
+     for it in range(max_iter):
+         # tmp = A + S; compute responsibilities
+         np.add(A, S, tmp)
+@@ -204,7 +205,7 @@ def affinity_propagation(S, preference=None, convergence_iter=15, max_iter=200,
+     I = np.flatnonzero(E)
+     K = I.size  # Identify exemplars
+ 
+-    if K > 0:
++    if K > 0 and not unconverged:
+         c = np.argmax(S[:, I], axis=1)
+         c[I] = np.arange(K)  # Identify clusters
+         # Refine the final set of exemplars and clusters and return results

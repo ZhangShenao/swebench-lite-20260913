@@ -1,0 +1,31 @@
+diff --git a/lib/matplotlib/__init__.py b/lib/matplotlib/__init__.py
+index c268a5672..39b624d80 100644
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -720,6 +720,7 @@ class RcParams(MutableMapping, dict):
+                         if pattern_re.search(key))
+ 
+     def copy(self):
++        """Copy this RcParams instance."""
+         rccopy = RcParams()
+         for k in self:  # Skip deprecations and revalidation.
+             dict.__setitem__(rccopy, k, dict.__getitem__(self, k))
+@@ -1059,6 +1060,8 @@ def rc_context(rc=None, fname=None):
+     """
+     Return a context manager for temporarily changing rcParams.
+ 
++    The :rc:`backend` will not be reset by the context manager.
++
+     Parameters
+     ----------
+     rc : dict
+@@ -1087,7 +1090,8 @@ def rc_context(rc=None, fname=None):
+              plt.plot(x, y)  # uses 'print.rc'
+ 
+     """
+-    orig = rcParams.copy()
++    orig = dict(rcParams.copy())
++    del orig['backend']
+     try:
+         if fname:
+             rc_file(fname)

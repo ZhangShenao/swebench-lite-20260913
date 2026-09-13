@@ -1,0 +1,35 @@
+diff --git a/django/core/management/commands/shell.py b/django/core/management/commands/shell.py
+index 2b306a579e..571d120467 100644
+--- a/django/core/management/commands/shell.py
++++ b/django/core/management/commands/shell.py
+@@ -84,13 +84,13 @@ class Command(BaseCommand):
+     def handle(self, **options):
+         # Execute the command and exit.
+         if options['command']:
+-            exec(options['command'])
++            exec(options['command'], {})
+             return
+ 
+         # Execute stdin if it has anything to read and exit.
+         # Not supported on Windows due to select.select() limitations.
+         if sys.platform != 'win32' and not sys.stdin.isatty() and select.select([sys.stdin], [], [], 0)[0]:
+-            exec(sys.stdin.read())
++            exec(sys.stdin.read(), {})
+             return
+ 
+         available_shells = [options['interface']] if options['interface'] else self.shells
+diff --git a/docs/releases/3.2.txt b/docs/releases/3.2.txt
+index f542a4fee9..2a3248952e 100644
+--- a/docs/releases/3.2.txt
++++ b/docs/releases/3.2.txt
+@@ -272,6 +272,10 @@ Management Commands
+   prior to executing the command. In previous versions, either all or none
+   of the system checks were performed.
+ 
++* The :djadmin:`shell` command now executes code provided by the
++  :option:`shell --command` option or a standard input in a new namespace.
++  This fixes a crash when the code contains functions.
++
+ Migrations
+ ~~~~~~~~~~
+ 

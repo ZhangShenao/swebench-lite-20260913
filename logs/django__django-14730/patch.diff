@@ -1,0 +1,33 @@
+diff --git a/django/db/models/fields/related.py b/django/db/models/fields/related.py
+index febaadbb5b..7ffa4beb7f 100644
+--- a/django/db/models/fields/related.py
++++ b/django/db/models/fields/related.py
+@@ -1247,6 +1247,15 @@ class ManyToManyField(RelatedField):
+                     id='fields.W341',
+                 )
+             )
++        if self.remote_field.symmetrical and self._related_name:
++            warnings.append(
++                checks.Warning(
++                    'related_name has no effect on ManyToManyField '
++                    'with a symmetrical relationship, e.g. to "self".',
++                    obj=self,
++                    id='fields.W345',
++                )
++            )
+         if (self.remote_field.limit_choices_to and self.remote_field.through and
+                 not self.remote_field.through._meta.auto_created):
+             warnings.append(
+diff --git a/docs/ref/checks.txt b/docs/ref/checks.txt
+index 3147114f8d..2ea2fd0df2 100644
+--- a/docs/ref/checks.txt
++++ b/docs/ref/checks.txt
+@@ -313,6 +313,8 @@ Related fields
+   with a ``through`` model.
+ * **fields.W344**: The field's intermediary table ``<table name>`` clashes with
+   the table name of ``<model>``/``<model>.<field name>``.
++* **fields.W345**: ``related_name`` has no effect on ``ManyToManyField`` with a
++  symmetrical relationship, e.g. to "self".
+ 
+ Models
+ ------

@@ -1,0 +1,72 @@
+diff --git a/CHANGES b/CHANGES
+index df70ab46e..1fd20d021 100644
+--- a/CHANGES
++++ b/CHANGES
+@@ -22,6 +22,8 @@ Features added
+   nested declarations.
+ * #8081: LaTeX: Allow to add LaTeX package via ``app.add_latex_package()`` until
+   just before writing .tex file
++* #8273: manpage: Add :confval:`man_make_section_directory` to make a section
++  directory on build man page
+ 
+ Bugs fixed
+ ----------
+diff --git a/doc/usage/configuration.rst b/doc/usage/configuration.rst
+index 3fc3a5306..790323aeb 100644
+--- a/doc/usage/configuration.rst
++++ b/doc/usage/configuration.rst
+@@ -2245,6 +2245,13 @@ These options influence manual page output.
+ 
+    .. versionadded:: 1.1
+ 
++.. confval:: man_make_section_directory
++
++   If true, make a section directory on build man page.
++   Default is ``False``.
++
++   .. versionadded:: 3.3
++
+ 
+ .. _texinfo-options:
+ 
+diff --git a/sphinx/builders/manpage.py b/sphinx/builders/manpage.py
+index 4166dece9..286dd2ffa 100644
+--- a/sphinx/builders/manpage.py
++++ b/sphinx/builders/manpage.py
+@@ -24,7 +24,7 @@ from sphinx.util import logging
+ from sphinx.util import progress_message
+ from sphinx.util.console import darkgreen  # type: ignore
+ from sphinx.util.nodes import inline_all_toctrees
+-from sphinx.util.osutil import make_filename_from_project
++from sphinx.util.osutil import ensuredir, make_filename_from_project
+ from sphinx.writers.manpage import ManualPageWriter, ManualPageTranslator
+ 
+ 
+@@ -82,9 +82,16 @@ class ManualPageBuilder(Builder):
+ 
+             targetname = '%s.%s' % (name, section)
+             logger.info(darkgreen(targetname) + ' { ', nonl=True)
+-            destination = FileOutput(
+-                destination_path=path.join(self.outdir, targetname),
+-                encoding='utf-8')
++            if self.config.man_make_section_directory:
++                dirname = 'man%s' % section
++                ensuredir(path.join(self.outdir, dirname))
++                destination = FileOutput(
++                    destination_path=path.join(self.outdir, dirname, targetname),
++                    encoding='utf-8')
++            else:
++                destination = FileOutput(
++                    destination_path=path.join(self.outdir, targetname),
++                    encoding='utf-8')
+ 
+             tree = self.env.get_doctree(docname)
+             docnames = set()  # type: Set[str]
+@@ -115,6 +122,7 @@ def setup(app: Sphinx) -> Dict[str, Any]:
+ 
+     app.add_config_value('man_pages', default_man_pages, None)
+     app.add_config_value('man_show_urls', False, None)
++    app.add_config_value('man_make_section_directory', False, None)
+ 
+     return {
+         'version': 'builtin',

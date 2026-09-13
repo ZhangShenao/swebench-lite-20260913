@@ -1,0 +1,71 @@
+diff --git a/pylint/config/config_initialization.py b/pylint/config/config_initialization.py
+index 24e453a7..9483e214 100644
+--- a/pylint/config/config_initialization.py
++++ b/pylint/config/config_initialization.py
+@@ -51,12 +51,12 @@ def _config_initialization(
+     if "load-plugins" in config_data:
+         linter.load_plugin_modules(utils._splitstrip(config_data["load-plugins"]))
+ 
++    unrecognized_options_message = None
+     # First we parse any options from a configuration file
+     try:
+         linter._parse_configuration_file(config_args)
+     except _UnrecognizedOptionError as exc:
+-        msg = ", ".join(exc.options)
+-        linter.add_message("unrecognized-option", line=0, args=msg)
++        unrecognized_options_message = ", ".join(exc.options)
+ 
+     # Then, if a custom reporter is provided as argument, it may be overridden
+     # by file parameters, so we re-set it here. We do this before command line
+@@ -81,8 +81,15 @@ def _config_initialization(
+             unrecognized_options.append(opt[1:])
+     if unrecognized_options:
+         msg = ", ".join(unrecognized_options)
+-        linter.add_message("unrecognized-option", line=0, args=msg)
+-        raise _UnrecognizedOptionError(options=unrecognized_options)
++        linter._arg_parser.error(f"Unrecognized option found: {msg}")
++
++    # Now that config file and command line options have been loaded
++    # with all disables, it is safe to emit messages
++    if unrecognized_options_message is not None:
++        linter.set_current_module(str(config_file) if config_file else "")
++        linter.add_message(
++            "unrecognized-option", args=unrecognized_options_message, line=0
++        )
+ 
+     # Set the current module to configuration as we don't know where
+     # the --load-plugins key is coming from
+@@ -92,15 +99,11 @@ def _config_initialization(
+     # load plugin specific configuration.
+     linter.load_plugin_configuration()
+ 
+-    # parsed_args_list should now only be a list of files/directories to lint.
+-    # All other options have been removed from the list.
+-    if not parsed_args_list:
+-        print(linter.help())
+-        sys.exit(32)
+-
+     # Now that plugins are loaded, get list of all fail_on messages, and enable them
+     linter.enable_fail_on_messages()
+ 
+     linter._parse_error_mode()
+ 
++    # parsed_args_list should now only be a list of files/directories to lint.
++    # All other options have been removed from the list.
+     return parsed_args_list
+diff --git a/pylint/lint/run.py b/pylint/lint/run.py
+index 778e6444..2948021c 100644
+--- a/pylint/lint/run.py
++++ b/pylint/lint/run.py
+@@ -136,6 +136,11 @@ group are mutually exclusive.",
+             linter, args, reporter, config_file=self._rcfile, verbose_mode=self.verbose
+         )
+ 
++        # Display help messages if there are no files to lint
++        if not args:
++            print(linter.help())
++            sys.exit(32)
++
+         if linter.config.jobs < 0:
+             print(
+                 f"Jobs number ({linter.config.jobs}) should be greater than or equal to 0",

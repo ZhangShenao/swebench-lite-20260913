@@ -1,0 +1,50 @@
+diff --git a/lib/matplotlib/__init__.py b/lib/matplotlib/__init__.py
+index b657a35cf..b0e517ef6 100644
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -129,6 +129,34 @@ __bibtex__ = r"""@Article{Hunter:2007,
+   year      = 2007
+ }"""
+ 
++# modelled after sys.version_info
++_VersionInfo = namedtuple('_VersionInfo',
++                          'major, minor, micro, releaselevel, serial')
++
++
++def _parse_to_version_info(version_str):
++    """
++    Parse a version string to a namedtuple analogous to sys.version_info.
++
++    See:
++    https://packaging.pypa.io/en/latest/version.html#packaging.version.parse
++    https://docs.python.org/3/library/sys.html#sys.version_info
++    """
++    v = parse_version(version_str)
++    if v.pre is None and v.post is None and v.dev is None:
++        return _VersionInfo(v.major, v.minor, v.micro, 'final', 0)
++    elif v.dev is not None:
++        return _VersionInfo(v.major, v.minor, v.micro, 'alpha', v.dev)
++    elif v.pre is not None:
++        releaselevel = {
++            'a': 'alpha',
++            'b': 'beta',
++            'rc': 'candidate'}.get(v.pre[0], 'alpha')
++        return _VersionInfo(v.major, v.minor, v.micro, releaselevel, v.pre[1])
++    else:
++        # fallback for v.post: guess-next-dev scheme from setuptools_scm
++        return _VersionInfo(v.major, v.minor, v.micro + 1, 'alpha', v.post)
++
+ 
+ def __getattr__(name):
+     if name == "__version__":
+@@ -148,6 +176,10 @@ def __getattr__(name):
+         else:  # Get the version from the _version.py setuptools_scm file.
+             __version__ = _version.version
+         return __version__
++    if name == "__version_info__":
++        global __version_info__  # cache it.
++        __version_info__ = _parse_to_version_info(__getattr__("__version__"))
++        return __version_info__
+     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+ 
+ 

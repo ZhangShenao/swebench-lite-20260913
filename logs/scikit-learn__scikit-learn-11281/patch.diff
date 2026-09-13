@@ -1,0 +1,80 @@
+diff --git a/doc/whats_new/v0.20.rst b/doc/whats_new/v0.20.rst
+index 87569d864..eb69292a1 100644
+--- a/doc/whats_new/v0.20.rst
++++ b/doc/whats_new/v0.20.rst
+@@ -201,6 +201,10 @@ Cluster
+   regardless of ``algorithm``.
+   :issue:`8003` by :user:`Joël Billaud <recamshak>`.
+ 
++- Add ``fit_predict`` method to :class:`mixture.GaussianMixture` and
++  :class:`mixture.BayesianGaussianMixture` class.
++  :issue:`10951` by :user:`Hanmin Qin <qinhanmin2014>`.
++
+ Datasets
+ 
+ - In :func:`datasets.make_blobs`, one can now pass a list to the `n_samples`
+diff --git a/sklearn/mixture/base.py b/sklearn/mixture/base.py
+index a9f66740f..a6844d63d 100644
+--- a/sklearn/mixture/base.py
++++ b/sklearn/mixture/base.py
+@@ -169,14 +169,18 @@ class BaseMixture(six.with_metaclass(ABCMeta, DensityMixin, BaseEstimator)):
+         """
+         pass
+ 
+-    def fit(self, X, y=None):
+-        """Estimate model parameters with the EM algorithm.
++    def fit_predict(self, X, y=None):
++        """Estimate model parameters using X and predict the labels for X.
+ 
+-        The method fit the model `n_init` times and set the parameters with
++        The method fits the model n_init times and sets the parameters with
+         which the model has the largest likelihood or lower bound. Within each
+         trial, the method iterates between E-step and M-step for `max_iter`
+         times until the change of likelihood or lower bound is less than
+         `tol`, otherwise, a `ConvergenceWarning` is raised.
++        After fitting, it predicts the most probable label for the
++        input data points.
++
++        .. versionadded:: 0.20
+ 
+         Parameters
+         ----------
+@@ -186,7 +190,8 @@ class BaseMixture(six.with_metaclass(ABCMeta, DensityMixin, BaseEstimator)):
+ 
+         Returns
+         -------
+-        self
++        labels : array, shape (n_samples,)
++            Component labels.
+         """
+         X = _check_X(X, self.n_components, ensure_min_samples=2)
+         self._check_initial_parameters(X)
+@@ -240,6 +245,28 @@ class BaseMixture(six.with_metaclass(ABCMeta, DensityMixin, BaseEstimator)):
+         self._set_parameters(best_params)
+         self.n_iter_ = best_n_iter
+ 
++        return self.predict(X)
++
++    def fit(self, X, y=None):
++        """Estimate model parameters with the EM algorithm.
++
++        The method fits the model ``n_init`` times and sets the parameters
++        with which the model has the largest likelihood or lower bound. Within
++        each trial, the method iterates between E-step and M-step for
++        ``max_iter`` times until the change of likelihood or lower bound is
++        less than ``tol``, otherwise, a :class:`ConvergenceWarning` is raised.
++
++        Parameters
++        ----------
++        X : array-like, shape (n_samples, n_features)
++            List of n_features-dimensional data points. Each row
++            corresponds to a single data point.
++
++        Returns
++        -------
++        self
++        """
++        self.fit_predict(X, y)
+         return self
+ 
+     def _e_step(self, X):

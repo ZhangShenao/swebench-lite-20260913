@@ -1,0 +1,17 @@
+diff --git a/pylint/lint/expand_modules.py b/pylint/lint/expand_modules.py
+index 289e1afc..91b6873d 100644
+--- a/pylint/lint/expand_modules.py
++++ b/pylint/lint/expand_modules.py
+@@ -119,7 +119,11 @@ def expand_modules(
+             is_namespace = False
+             is_directory = os.path.isdir(something)
+         else:
+-            is_namespace = modutils.is_namespace(spec)
++            is_namespace = modutils.is_namespace(spec) or (
++                os.path.isdir(something)
++                and not modutils.is_directory(spec)
++                and os.path.basename(spec.location or "") != "__init__.py"
++            )
+             is_directory = modutils.is_directory(spec)
+         if not is_namespace:
+             result.append(

@@ -1,0 +1,49 @@
+diff --git a/django/contrib/admin/options.py b/django/contrib/admin/options.py
+index dadd4acfa1..1e5fab917e 100644
+--- a/django/contrib/admin/options.py
++++ b/django/contrib/admin/options.py
+@@ -2037,10 +2037,13 @@ class InlineModelAdmin(BaseModelAdmin):
+         self.opts = self.model._meta
+         self.has_registered_model = admin_site.is_registered(self.model)
+         super().__init__()
++        if self.verbose_name_plural is None:
++            if self.verbose_name is None:
++                self.verbose_name_plural = self.model._meta.verbose_name_plural
++            else:
++                self.verbose_name_plural = format_lazy('{}s', self.verbose_name)
+         if self.verbose_name is None:
+             self.verbose_name = self.model._meta.verbose_name
+-        if self.verbose_name_plural is None:
+-            self.verbose_name_plural = self.model._meta.verbose_name_plural
+ 
+     @property
+     def media(self):
+diff --git a/docs/ref/contrib/admin/index.txt b/docs/ref/contrib/admin/index.txt
+index fc1eab44f1..2bab87a8eb 100644
+--- a/docs/ref/contrib/admin/index.txt
++++ b/docs/ref/contrib/admin/index.txt
+@@ -2459,7 +2459,9 @@ The ``InlineModelAdmin`` class adds or customizes:
+ .. attribute:: InlineModelAdmin.verbose_name_plural
+ 
+     An override to the ``verbose_name_plural`` found in the model's inner
+-    ``Meta`` class.
++    ``Meta`` class. If not given, the
++    :attr:`~InlineModelAdmin.verbose_name` will be used with the ``'s'``
++    suffix.
+ 
+ .. attribute:: InlineModelAdmin.can_delete
+ 
+diff --git a/docs/releases/4.0.txt b/docs/releases/4.0.txt
+index 7ae566d43a..3ba88daa4a 100644
+--- a/docs/releases/4.0.txt
++++ b/docs/releases/4.0.txt
+@@ -85,6 +85,9 @@ Minor features
+ * The new :attr:`.ModelAdmin.search_help_text` attribute allows specifying a
+   descriptive text for the search box.
+ 
++* :attr:`~.InlineModelAdmin.verbose_name_plural` now falls back to the
++  :attr:`~.InlineModelAdmin.verbose_name` with the ``'s'`` suffix.
++
+ :mod:`django.contrib.admindocs`
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 

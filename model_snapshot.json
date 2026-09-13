@@ -1,0 +1,11 @@
+{
+  "id": "moonshotai/kimi-k3",
+  "name": "MoonshotAI: Kimi K3",
+  "created": 1784215858,
+  "context_length": 1048576,
+  "max_completion_tokens": 943718,
+  "pricing_prompt": "0.000002648138063",
+  "pricing_completion": "0.00001328272425",
+  "fetched_at": "2026-09-12T21:31:42Z",
+  "source": "https://openrouter.ai/api/v1/models"
+}

@@ -1,0 +1,177 @@
+diff --git a/examples/text_labels_and_annotations/annotation_demo.py b/examples/text_labels_and_annotations/annotation_demo.py
+index 2008a8744..917431751 100644
+--- a/examples/text_labels_and_annotations/annotation_demo.py
++++ b/examples/text_labels_and_annotations/annotation_demo.py
+@@ -347,8 +347,8 @@ an2 = ax1.annotate('Drag me 2', xy=(.5, .5), xycoords=an1,
+                    arrowprops=dict(patchB=an1.get_bbox_patch(),
+                                    connectionstyle="arc3,rad=0.2",
+                                    **arrow_args))
+-an1.draggable()
+-an2.draggable()
++an1.set_draggable(True)
++an2.set_draggable(True)
+ 
+ an3 = ax1.annotate('', xy=(.5, .5), xycoords=an2,
+                    xytext=(.5, .5), textcoords=an1,
+diff --git a/lib/matplotlib/legend.py b/lib/matplotlib/legend.py
+index 9e5b903d5..747047c57 100644
+--- a/lib/matplotlib/legend.py
++++ b/lib/matplotlib/legend.py
+@@ -286,6 +286,9 @@ handler_map : dict or None
+     The custom dictionary mapping instances or types to a legend
+     handler. This *handler_map* updates the default handler map
+     found at `matplotlib.legend.Legend.get_legend_handler_map`.
++
++draggable : bool, default: False
++    Whether the legend can be dragged with the mouse.
+ """)
+ 
+ 
+@@ -342,7 +345,8 @@ class Legend(Artist):
+         title_fontproperties=None,  # properties for the legend title
+         alignment="center",       # control the alignment within the legend box
+         *,
+-        ncol=1  # synonym for ncols (backward compatibility)
++        ncol=1,  # synonym for ncols (backward compatibility)
++        draggable=False  # whether the legend can be dragged with the mouse
+     ):
+         """
+         Parameters
+@@ -538,6 +542,7 @@ class Legend(Artist):
+ 
+         self.set_title(title, prop=title_prop_fp)
+         self._draggable = None
++        self.set_draggable(draggable)
+ 
+         # set the text color
+ 
+diff --git a/lib/matplotlib/text.py b/lib/matplotlib/text.py
+index 356bdb36a..d138636ab 100644
+--- a/lib/matplotlib/text.py
++++ b/lib/matplotlib/text.py
+@@ -1460,6 +1460,7 @@ class _AnnotationBase:
+         self.set_annotation_clip(annotation_clip)
+ 
+         self._draggable = None
++        self._draggable_state = False
+ 
+     def _get_xy(self, renderer, x, y, s):
+         if isinstance(s, tuple):
+@@ -1612,15 +1613,17 @@ class _AnnotationBase:
+             return self.axes.contains_point(xy_pixel)
+         return True
+ 
+-    def draggable(self, state=None, use_blit=False):
++    def set_draggable(self, state, use_blit=False):
+         """
+         Set whether the annotation is draggable with the mouse.
+ 
+         Parameters
+         ----------
+-        state : bool or None
+-            - True or False: set the draggability.
+-            - None: toggle the draggability.
++        state : bool
++            Whether mouse dragging is enabled.
++        use_blit : bool, optional
++            Use blitting for faster image composition. For details see
++            :ref:`func-animation`.
+ 
+         Returns
+         -------
+@@ -1628,12 +1631,12 @@ class _AnnotationBase:
+             If the annotation is draggable, the corresponding
+             `.DraggableAnnotation` helper is returned.
+         """
++        self._draggable_state = state
++        if self.figure is None:
++            # The actual draggable helper requires a figure canvas, so it is
++            # only created once the annotation gets a figure (see set_figure).
++            return None
+         from matplotlib.offsetbox import DraggableAnnotation
+-        is_draggable = self._draggable is not None
+-
+-        # if state is None we'll toggle
+-        if state is None:
+-            state = not is_draggable
+ 
+         if state:
+             if self._draggable is None:
+@@ -1645,6 +1648,37 @@ class _AnnotationBase:
+ 
+         return self._draggable
+ 
++    def get_draggable(self):
++        """
++        Return ``True`` if the annotation is draggable, ``False`` otherwise.
++        """
++        return self._draggable is not None
++
++    @_api.deprecated("3.7", alternative="set_draggable()")
++    def draggable(self, state=None, use_blit=False):
++        """
++        Set whether the annotation is draggable with the mouse.
++
++        Parameters
++        ----------
++        state : bool or None
++            - True or False: set the draggability.
++            - None: toggle the draggability.
++
++        Returns
++        -------
++        DraggableAnnotation or None
++            If the annotation is draggable, the corresponding
++            `.DraggableAnnotation` helper is returned.
++        """
++        is_draggable = self._draggable is not None
++
++        # if state is None we'll toggle
++        if state is None:
++            state = not is_draggable
++
++        return self.set_draggable(state, use_blit)
++
+ 
+ class Annotation(Text, _AnnotationBase):
+     """
+@@ -1670,6 +1704,7 @@ class Annotation(Text, _AnnotationBase):
+                  textcoords=None,
+                  arrowprops=None,
+                  annotation_clip=None,
++                 draggable=False,
+                  **kwargs):
+         """
+         Annotate the point *xy* with text *text*.
+@@ -1825,6 +1860,9 @@ class Annotation(Text, _AnnotationBase):
+             - If *None*, the annotation will be clipped when *xy* is outside
+               the axes and *xycoords* is 'data'.
+ 
++        draggable : bool, default: False
++            Whether the annotation can be dragged with the mouse.
++
+         **kwargs
+             Additional kwargs are passed to `~matplotlib.text.Text`.
+ 
+@@ -1875,6 +1913,9 @@ class Annotation(Text, _AnnotationBase):
+ 
+         # Must come last, as some kwargs may be propagated to arrow_patch.
+         Text.__init__(self, x, y, text, **kwargs)
++        # Note that the draggable helper can only be created once the
++        # annotation has been added to a figure; see `set_figure`.
++        self.set_draggable(draggable)
+ 
+     def contains(self, event):
+         inside, info = self._default_contains(event)
+@@ -1937,6 +1978,11 @@ class Annotation(Text, _AnnotationBase):
+         if self.arrow_patch is not None:
+             self.arrow_patch.set_figure(fig)
+         Artist.set_figure(self, fig)
++        # If draggability was requested before the annotation had a figure
++        # (e.g. via the *draggable* constructor kwarg), enable it now that
++        # the figure canvas is available.
++        if self._draggable_state and self._draggable is None:
++            self.set_draggable(True)
+ 
+     def update_positions(self, renderer):
+         """

@@ -1,0 +1,12 @@
+diff --git a/lib/matplotlib/figure.py b/lib/matplotlib/figure.py
+index d2568fddb..84a66d7a2 100644
+--- a/lib/matplotlib/figure.py
++++ b/lib/matplotlib/figure.py
+@@ -931,6 +931,7 @@ default: %(va)s
+         self._axobservers.process("_axes_change_event", self)
+         self.stale = True
+         self._localaxes.remove(ax)
++        self.canvas.release_mouse(ax)
+ 
+         # Break link between any shared axes
+         for name in ax._axis_names:

@@ -1,0 +1,32 @@
+diff --git a/ChangeLog b/ChangeLog
+index b6ba4bec..ea8ad894 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -33,6 +33,11 @@ Release date: TBA
+ 
+   closes #5722
+ 
++* Fixed the ``fixme`` false negative when a note tag given in ``--notes`` is
++  entirely punctuation.
++
++  Closes #5859
++
+ * Fixed crash from ``arguments-differ`` and ``arguments-renamed`` when methods were
+   defined outside the top level of a class.
+ 
+diff --git a/pylint/checkers/misc.py b/pylint/checkers/misc.py
+index 69149e61..baec58fb 100644
+--- a/pylint/checkers/misc.py
++++ b/pylint/checkers/misc.py
+@@ -121,9 +121,9 @@ class EncodingChecker(BaseChecker):
+ 
+         notes = "|".join(re.escape(note) for note in self.config.notes)
+         if self.config.notes_rgx:
+-            regex_string = rf"#\s*({notes}|{self.config.notes_rgx})\b"
++            regex_string = rf"#\s*({notes}|{self.config.notes_rgx})(?=(:|\s|\Z))"
+         else:
+-            regex_string = rf"#\s*({notes})\b"
++            regex_string = rf"#\s*({notes})(?=(:|\s|\Z))"
+ 
+         self._fixme_pattern = re.compile(regex_string, re.I)
+ 

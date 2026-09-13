@@ -1,0 +1,71 @@
+diff --git a/doc/internals.rst b/doc/internals.rst
+index 46c117e3..b158f12a 100644
+--- a/doc/internals.rst
++++ b/doc/internals.rst
+@@ -42,6 +42,38 @@ xarray objects via the (readonly) :py:attr:`Dataset.variables
+ <xarray.Dataset.variables>` and
+ :py:attr:`DataArray.variable <xarray.DataArray.variable>` attributes.
+ 
++Duck arrays
++-----------
++
++.. warning::
++
++    This is a experimental feature.
++
++xarray can wrap custom `duck array`_ objects as long as they define numpy's
++``shape``, ``dtype`` and ``ndim`` properties and the ``__array__``,
++``__array_ufunc__`` and ``__array_function__`` methods.
++
++In certain situations (e.g. when printing the collapsed preview of
++variables of a ``Dataset``), xarray will display the repr of a `duck array`_
++in a single line, truncating it to a certain number of characters. If that
++would drop too much information, the `duck array`_ may define a
++``_repr_inline_`` method that takes ``max_width`` (number of characters) as an
++argument:
++
++.. code:: python
++
++    class MyDuckArray:
++        ...
++
++        def _repr_inline_(self, max_width):
++            """ format to a single line with at most max_width characters """
++            ...
++
++        ...
++
++.. _duck array: https://numpy.org/neps/nep-0022-ndarray-duck-typing-overview.html
++
++
+ Extending xarray
+ ----------------
+ 
+diff --git a/doc/whats-new.rst b/doc/whats-new.rst
+index 81ef2cd9..573583f0 100644
+--- a/doc/whats-new.rst
++++ b/doc/whats-new.rst
+@@ -29,6 +29,10 @@ New Features
+   property for :py:class:`CFTimeIndex` and show ``calendar`` and ``length`` in
+   :py:meth:`CFTimeIndex.__repr__` (:issue:`2416`, :pull:`4092`)
+   `Aaron Spring <https://github.com/aaronspring>`_.
++- Use a wrapped array's ``_repr_inline_`` method to construct the collapsed ``repr``
++  of :py:class:`DataArray` and :py:class:`Dataset` objects and
++  document the new method in :doc:`internals`. (:pull:`4248`).
++  By `Justus Magin <https://github.com/keewis>`_.
+ 
+ 
+ Bug fixes
+diff --git a/xarray/core/formatting.py b/xarray/core/formatting.py
+index 28eaae5f..9aa20f2b 100644
+--- a/xarray/core/formatting.py
++++ b/xarray/core/formatting.py
+@@ -261,6 +261,8 @@ def inline_variable_array_repr(var, max_width):
+         return inline_dask_repr(var.data)
+     elif isinstance(var._data, sparse_array_type):
+         return inline_sparse_repr(var.data)
++    elif hasattr(var._data, "_repr_inline_"):
++        return var._data._repr_inline_(max_width)
+     elif hasattr(var._data, "__array_function__"):
+         return maybe_truncate(repr(var._data).replace("\n", " "), max_width)
+     else:

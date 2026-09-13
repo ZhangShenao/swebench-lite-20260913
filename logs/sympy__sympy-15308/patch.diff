@@ -1,0 +1,15 @@
+diff --git a/sympy/printing/latex.py b/sympy/printing/latex.py
+index a0eb97792e..73ac17b67a 100644
+--- a/sympy/printing/latex.py
++++ b/sympy/printing/latex.py
+@@ -1485,6 +1485,10 @@ def _print_MatAdd(self, expr):
+             sign = ""
+         return sign + ' '.join(l)
+ 
++    def _print_Trace(self, expr):
++        mat = expr.arg
++        return r"\operatorname{tr}\left(%s \right)" % self._print(mat)
++
+     def _print_MatMul(self, expr):
+         from sympy import Add, MatAdd, HadamardProduct, MatMul, Mul
+ 

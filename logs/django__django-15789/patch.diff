@@ -1,0 +1,61 @@
+diff --git a/django/utils/html.py b/django/utils/html.py
+index d0bc97be80..007602a14a 100644
+--- a/django/utils/html.py
++++ b/django/utils/html.py
+@@ -59,7 +59,7 @@ _json_script_escapes = {
+ }
+ 
+ 
+-def json_script(value, element_id=None):
++def json_script(value, element_id=None, encoder=None):
+     """
+     Escape all the HTML/XML special characters with their unicode escapes, so
+     value is safe to be output anywhere except for inside a tag attribute. Wrap
+@@ -67,7 +67,9 @@ def json_script(value, element_id=None):
+     """
+     from django.core.serializers.json import DjangoJSONEncoder
+ 
+-    json_str = json.dumps(value, cls=DjangoJSONEncoder).translate(_json_script_escapes)
++    json_str = json.dumps(value, cls=encoder or DjangoJSONEncoder).translate(
++        _json_script_escapes
++    )
+     if element_id:
+         template = '<script id="{}" type="application/json">{}</script>'
+         args = (element_id, mark_safe(json_str))
+diff --git a/docs/ref/utils.txt b/docs/ref/utils.txt
+index 7712015929..9409aeb7f7 100644
+--- a/docs/ref/utils.txt
++++ b/docs/ref/utils.txt
+@@ -674,6 +674,18 @@ escaping HTML.
+     If you are looking for a more robust solution, take a look at the `bleach
+     <https://pypi.org/project/bleach/>`_ Python library.
+ 
++.. function:: json_script(value, element_id=None, encoder=None)
++
++    Safely outputs a Python object as JSON, wrapped in a ``<script>`` tag,
++    ready for use with JavaScript.
++
++    The ``element_id`` argument, if specified, is used as the HTML ``id`` of
++    the ``<script>`` tag.
++
++    The ``encoder`` argument, if specified, is used as the value of ``cls``
++    for :func:`json.dumps`. It defaults to
++    :class:`~django.core.serializers.json.DjangoJSONEncoder`.
++
+ .. function:: html_safe()
+ 
+     The ``__html__()`` method on a class helps non-Django templates detect
+diff --git a/docs/releases/4.2.txt b/docs/releases/4.2.txt
+index ca1c2a0eaa..bbcd0b1afb 100644
+--- a/docs/releases/4.2.txt
++++ b/docs/releases/4.2.txt
+@@ -252,6 +252,9 @@ Miscellaneous
+ * The undocumented ``SimpleTemplateResponse.rendering_attrs`` and
+   ``TemplateResponse.rendering_attrs`` are renamed to ``non_picklable_attrs``.
+ 
++* :func:`django.utils.html.json_script` now supports passing a custom JSON
++  encoder with the new ``encoder`` argument.
++
+ .. _deprecated-features-4.2:
+ 
+ Features deprecated in 4.2

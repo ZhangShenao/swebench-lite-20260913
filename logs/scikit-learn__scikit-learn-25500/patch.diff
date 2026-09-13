@@ -1,0 +1,24 @@
+diff --git a/sklearn/isotonic.py b/sklearn/isotonic.py
+index b05e59536..43766d81c 100644
+--- a/sklearn/isotonic.py
++++ b/sklearn/isotonic.py
+@@ -376,6 +376,10 @@ class IsotonicRegression(RegressorMixin, TransformerMixin, BaseEstimator):
+         y_pred : ndarray of shape (n_samples,)
+             The transformed data.
+         """
++        return self._transform(T)
++
++    def _transform(self, T):
++        """`transform` logic without `transform_output` handling."""
+ 
+         if hasattr(self, "X_thresholds_"):
+             dtype = self.X_thresholds_.dtype
+@@ -410,7 +414,7 @@ class IsotonicRegression(RegressorMixin, TransformerMixin, BaseEstimator):
+         y_pred : ndarray of shape (n_samples,)
+             Transformed data.
+         """
+-        return self.transform(T)
++        return self._transform(T)
+ 
+     # We implement get_feature_names_out here instead of using
+     # `ClassNamePrefixFeaturesOutMixin`` because `input_features` are ignored.

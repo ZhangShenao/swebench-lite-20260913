@@ -1,0 +1,32 @@
+diff --git a/src/_pytest/assertion/rewrite.py b/src/_pytest/assertion/rewrite.py
+index 2903b8995..0d4dee282 100644
+--- a/src/_pytest/assertion/rewrite.py
++++ b/src/_pytest/assertion/rewrite.py
+@@ -598,6 +598,10 @@ def set_location(node, lineno, col_offset):
+             node.lineno = lineno
+         if "col_offset" in node._attributes:
+             node.col_offset = col_offset
++        if "end_lineno" in node._attributes:
++            node.end_lineno = lineno
++        if "end_col_offset" in node._attributes:
++            node.end_col_offset = col_offset
+         for child in ast.iter_child_nodes(node):
+             _fix(child, lineno, col_offset)
+ 
+@@ -699,9 +703,13 @@ class AssertionRewriter(ast.NodeVisitor):
+             pos += 1
+         else:
+             lineno = item.lineno
+-        imports = [
+-            ast.Import([alias], lineno=lineno, col_offset=0) for alias in aliases
+-        ]
++        imports = []
++        for alias in aliases:
++            # ast.alias requires lineno/col_offset on Python 3.10+.
++            new_alias = ast.alias(
++                alias.name, alias.asname, lineno=lineno, col_offset=0
++            )
++            imports.append(ast.Import([new_alias], lineno=lineno, col_offset=0))
+         mod.body[pos:pos] = imports
+         # Collect asserts.
+         nodes = [mod]

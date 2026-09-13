@@ -1,0 +1,123 @@
+diff --git a/sympy/core/mul.py b/sympy/core/mul.py
+index 46f310b122..251b7fa4c7 100644
+--- a/sympy/core/mul.py
++++ b/sympy/core/mul.py
+@@ -7,7 +7,7 @@
+ from .singleton import S
+ from .operations import AssocOp, AssocOpDispatcher
+ from .cache import cacheit
+-from .logic import fuzzy_not, _fuzzy_group, fuzzy_and
++from .logic import fuzzy_not, _fuzzy_group
+ from .compatibility import reduce
+ from .expr import Expr
+ from .parameters import global_parameters
+@@ -1262,27 +1262,47 @@ def _eval_is_zero(self):
+                     zero = None
+         return zero
+ 
++    # without involving odd/even checks this code would suffice:
++    #_eval_is_integer = lambda self: _fuzzy_group(
++    #    (a.is_integer for a in self.args), quick_exit=True)
+     def _eval_is_integer(self):
+-        from sympy import fraction
+-        from sympy.core.numbers import Float
+-
+         is_rational = self._eval_is_rational()
+         if is_rational is False:
+             return False
+ 
+-        # use exact=True to avoid recomputing num or den
+-        n, d = fraction(self, exact=True)
+-        if is_rational:
+-            if d is S.One:
+-                return True
+-        if d.is_even:
+-            if d.is_prime:  # literal or symbolic 2
+-                return n.is_even
+-            if n.is_odd:
+-                return False  # true even if d = 0
+-        if n == d:
+-            return fuzzy_and([not bool(self.atoms(Float)),
+-            fuzzy_not(d.is_zero)])
++        numerators = []
++        denominators = []
++        for a in self.args:
++            if a.is_integer:
++                numerators.append(a)
++            elif a.is_Rational:
++                n, d = a.as_numer_denom()
++                numerators.append(n)
++                denominators.append(d)
++            elif a.is_Pow:
++                b, e = a.as_base_exp()
++                if not b.is_integer or not e.is_integer: return
++                if e.is_negative:
++                    denominators.append(b)
++                else:
++                    # for integer b and positive integer e: a = b**e would be integer
++                    assert not e.is_positive
++                    # for self being rational and e equal to zero: a = b**e would be 1
++                    assert not e.is_zero
++                    return # sign of e unknown -> self.is_integer cannot be decided
++            else:
++                return
++
++        if not denominators:
++            return True
++
++        odd = lambda ints: all(i.is_odd for i in ints)
++        even = lambda ints: any(i.is_even for i in ints)
++
++        if odd(numerators) and even(denominators):
++            return False
++        elif even(numerators) and denominators == [2]:
++            return True
+ 
+     def _eval_is_polar(self):
+         has_polar = any(arg.is_polar for arg in self.args)
+diff --git a/sympy/core/tests/test_arit.py b/sympy/core/tests/test_arit.py
+index e05cdf6ac1..0dc706e79a 100644
+--- a/sympy/core/tests/test_arit.py
++++ b/sympy/core/tests/test_arit.py
+@@ -379,7 +379,6 @@ def test_Mul_is_integer():
+     n = Symbol('n', integer=True)
+     nr = Symbol('nr', rational=False)
+     nz = Symbol('nz', integer=True, zero=False)
+-    nze = Symbol('nze', even=True, zero=False)
+     e = Symbol('e', even=True)
+     o = Symbol('o', odd=True)
+     i2 = Symbol('2', prime=True, even=True)
+@@ -388,18 +387,30 @@ def test_Mul_is_integer():
+     assert (nz/3).is_integer is None
+     assert (nr/3).is_integer is False
+     assert (x*k*n).is_integer is None
++    assert (e/2).is_integer is True
++    assert (e**2/2).is_integer is True
++    assert (2/k).is_integer is None
++    assert (2/k**2).is_integer is None
++    assert ((-1)**k*n).is_integer is True
++    assert (3*k*e/2).is_integer is True
++    assert (2*k*e/3).is_integer is None
+     assert (e/o).is_integer is None
+     assert (o/e).is_integer is False
+     assert (o/i2).is_integer is False
+-    assert Mul(o, 1/o, evaluate=False).is_integer is True
+     assert Mul(k, 1/k, evaluate=False).is_integer is None
+-    assert Mul(nze, 1/nze, evaluate=False).is_integer is True
+-    assert Mul(2., S.Half, evaluate=False).is_integer is False
++    assert Mul(2., S.Half, evaluate=False).is_integer is None
++    assert (2*sqrt(k)).is_integer is None
++    assert (2*k**n).is_integer is None
+ 
+     s = 2**2**2**Pow(2, 1000, evaluate=False)
+     m = Mul(s, s, evaluate=False)
+     assert m.is_integer
+ 
++    # broken in 1.6 and before, see #20161
++    xq = Symbol('xq', rational=True)
++    yq = Symbol('yq', rational=True)
++    assert (xq*yq).is_integer is None
++
+ 
+ def test_Add_Mul_is_integer():
+     x = Symbol('x')

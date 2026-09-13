@@ -1,0 +1,71 @@
+diff --git a/django/db/models/query.py b/django/db/models/query.py
+index 5ac2407ea3..c22d179a66 100644
+--- a/django/db/models/query.py
++++ b/django/db/models/query.py
+@@ -810,9 +810,8 @@ class QuerySet(AltersData):
+                     unique_fields=unique_fields,
+                 )
+                 connection = connections[self.db]
+-                if (
+-                    connection.features.can_return_rows_from_bulk_insert
+-                    and on_conflict is None
++                if connection.features.can_return_rows_from_bulk_insert and (
++                    on_conflict is None or on_conflict == OnConflict.UPDATE
+                 ):
+                     assert len(returned_columns) == len(objs_without_pk)
+                 for obj_without_pk, results in zip(objs_without_pk, returned_columns):
+@@ -1837,12 +1836,17 @@ class QuerySet(AltersData):
+         inserted_rows = []
+         bulk_return = connection.features.can_return_rows_from_bulk_insert
+         for item in [objs[i : i + batch_size] for i in range(0, len(objs), batch_size)]:
+-            if bulk_return and on_conflict is None:
++            if bulk_return and (
++                on_conflict is None or on_conflict == OnConflict.UPDATE
++            ):
+                 inserted_rows.extend(
+                     self._insert(
+                         item,
+                         fields=fields,
+                         using=self.db,
++                        on_conflict=on_conflict,
++                        update_fields=update_fields,
++                        unique_fields=unique_fields,
+                         returning_fields=self.model._meta.db_returning_fields,
+                     )
+                 )
+diff --git a/docs/ref/models/querysets.txt b/docs/ref/models/querysets.txt
+index a754953264..63c74a7c77 100644
+--- a/docs/ref/models/querysets.txt
++++ b/docs/ref/models/querysets.txt
+@@ -2411,9 +2411,13 @@ On databases that support it (all except Oracle and SQLite < 3.24), setting the
+ SQLite, in addition to ``update_fields``, a list of ``unique_fields`` that may
+ be in conflict must be provided.
+ 
+-Enabling the ``ignore_conflicts`` or ``update_conflicts`` parameter disable
+-setting the primary key on each model instance (if the database normally
+-support it).
++Enabling the ``ignore_conflicts`` parameter disable setting the primary key on
++each model instance (if the database normally supports it).
++
++.. versionchanged:: 5.0
++
++    Setting the ``update_conflicts`` parameter to ``True`` now also sets the
++    primary key on each model instance (if the database normally supports it).
+ 
+ .. warning::
+ 
+diff --git a/docs/releases/5.0.txt b/docs/releases/5.0.txt
+index 0ad0835c29..139e6fb7bb 100644
+--- a/docs/releases/5.0.txt
++++ b/docs/releases/5.0.txt
+@@ -357,6 +357,10 @@ Models
+   :meth:`.Model.save` now allows specifying a tuple of parent classes that must
+   be forced to be inserted.
+ 
++* :meth:`.QuerySet.bulk_create` now supports setting the primary key on
++  each model instance when updating conflicts (on databases that support
++  returning them).
++
+ Pagination
+ ~~~~~~~~~~
+ 

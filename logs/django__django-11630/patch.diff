@@ -1,0 +1,50 @@
+diff --git a/django/core/checks/model_checks.py b/django/core/checks/model_checks.py
+index 5c2266ca1d..0dc3f24d7a 100644
+--- a/django/core/checks/model_checks.py
++++ b/django/core/checks/model_checks.py
+@@ -4,7 +4,8 @@ from collections import defaultdict
+ from itertools import chain
+ 
+ from django.apps import apps
+-from django.core.checks import Error, Tags, register
++from django.conf import settings
++from django.core.checks import Error, Tags, Warning, register
+ 
+ 
+ @register(Tags.models)
+@@ -37,12 +38,18 @@ def check_all_models(app_configs=None, **kwargs):
+             constraints[model_constraint.name].append(model._meta.label)
+     for db_table, model_labels in db_table_models.items():
+         if len(model_labels) != 1:
++            if settings.DATABASE_ROUTERS:
++                error_class = Warning
++                error_id = 'models.W028'
++            else:
++                error_class = Error
++                error_id = 'models.E028'
+             errors.append(
+-                Error(
++                error_class(
+                     "db_table '%s' is used by multiple models: %s."
+                     % (db_table, ', '.join(db_table_models[db_table])),
+                     obj=db_table,
+-                    id='models.E028',
++                    id=error_id,
+                 )
+             )
+     for index_name, model_labels in indexes.items():
+diff --git a/docs/ref/checks.txt b/docs/ref/checks.txt
+index 99f4e1d316..e6bd004f3a 100644
+--- a/docs/ref/checks.txt
++++ b/docs/ref/checks.txt
+@@ -306,6 +306,10 @@ Models
+ * **models.W027**: ``<database>`` does not support check constraints.
+ * **models.E028**: ``db_table`` ``<db_table>`` is used by multiple models:
+   ``<model list>``.
++
++  If ``DATABASE_ROUTERS`` is set, this check is downgraded to a warning
++  (**models.W028**) since it's not possible to tell if the same table name is
++  intentional across different databases.
+ * **models.E029**: index name ``<index>`` is not unique for model ``<model>``.
+ * **models.E030**: index name ``<index>`` is not unique amongst models:
+   ``<model list>``.

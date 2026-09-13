@@ -1,0 +1,14 @@
+diff --git a/requests/sessions.py b/requests/sessions.py
+index 425db22c..fcdf8b15 100644
+--- a/requests/sessions.py
++++ b/requests/sessions.py
+@@ -180,6 +180,9 @@ class SessionRedirectMixin(object):
+ 
+             extract_cookies_to_jar(self.cookies, prepared_request, resp.raw)
+ 
++            # Copy the previous request to base the next iteration off of.
++            req = prepared_request
++
+             i += 1
+             yield resp
+ 

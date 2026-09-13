@@ -1,0 +1,51 @@
+diff --git a/django/db/models/deletion.py b/django/db/models/deletion.py
+index 16dff6a1cd..d45b9a0215 100644
+--- a/django/db/models/deletion.py
++++ b/django/db/models/deletion.py
+@@ -408,7 +408,8 @@ class Collector:
+             # fast deletes
+             for qs in self.fast_deletes:
+                 count = qs._raw_delete(using=self.using)
+-                deleted_counter[qs.model._meta.label] += count
++                if count:
++                    deleted_counter[qs.model._meta.label] += count
+ 
+             # update fields
+             for model, instances_for_fieldvalues in self.field_updates.items():
+diff --git a/tests/delete/tests.py b/tests/delete/tests.py
+index d8424670c9..1b05726001 100644
+--- a/tests/delete/tests.py
++++ b/tests/delete/tests.py
+@@ -528,7 +528,10 @@ class DeletionTests(TestCase):
+         }
+         deleted, deleted_objs = R.objects.all().delete()
+         for k, v in existed_objs.items():
+-            self.assertEqual(deleted_objs[k], v)
++            if v == 0:
++                self.assertNotIn(k, deleted_objs)
++            else:
++                self.assertEqual(deleted_objs[k], v)
+ 
+     def test_model_delete_returns_num_rows(self):
+         """
+@@ -558,7 +561,10 @@ class DeletionTests(TestCase):
+         deleted, deleted_objs = r.delete()
+         self.assertEqual(deleted, sum(existed_objs.values()))
+         for k, v in existed_objs.items():
+-            self.assertEqual(deleted_objs[k], v)
++            if v == 0:
++                self.assertNotIn(k, deleted_objs)
++            else:
++                self.assertEqual(deleted_objs[k], v)
+ 
+     def test_proxied_model_duplicate_queries(self):
+         """
+@@ -694,7 +700,7 @@ class FastDeleteTests(TestCase):
+         with self.assertNumQueries(1):
+             self.assertEqual(
+                 User.objects.filter(avatar__desc='missing').delete(),
+-                (0, {'delete.User': 0})
++                (0, {})
+             )
+ 
+     def test_fast_delete_combined_relationships(self):

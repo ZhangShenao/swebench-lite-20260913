@@ -1,0 +1,66 @@
+diff --git a/changelog/5260.bugfix.rst b/changelog/5260.bugfix.rst
+new file mode 100644
+index 000000000..484c1438a
+--- /dev/null
++++ b/changelog/5260.bugfix.rst
+@@ -0,0 +1,17 @@
++Improved comparison of byte strings.
++
++When comparing bytes, the assertion message used to show the byte numeric value when showing the differences::
++
++        def test():
++    >       assert b'spam' == b'eggs'
++    E       AssertionError: assert b'spam' == b'eggs'
++    E         At index 0 diff: 115 != 101
++    E         Use -v to get the full diff
++
++It now shows the actual ascii representation instead, which is often more useful::
++
++        def test():
++    >       assert b'spam' == b'eggs'
++    E       AssertionError: assert b'spam' == b'eggs'
++    E         At index 0 diff: b's' != b'e'
++    E         Use -v to get the full diff
+diff --git a/src/_pytest/assertion/util.py b/src/_pytest/assertion/util.py
+index 762e5761d..8c3f4d2d8 100644
+--- a/src/_pytest/assertion/util.py
++++ b/src/_pytest/assertion/util.py
+@@ -254,15 +254,37 @@ def _compare_eq_iterable(left, right, verbose=0):
+ 
+ 
+ def _compare_eq_sequence(left, right, verbose=0):
++    comparing_bytes = isinstance(left, bytes) and isinstance(right, bytes)
+     explanation = []
+     len_left = len(left)
+     len_right = len(right)
+     for i in range(min(len_left, len_right)):
+         if left[i] != right[i]:
++            if comparing_bytes:
++                # when comparing bytes, we want to see their ascii representation
++                # instead of their numeric values (#5260)
++                # using a slice gives us the ascii representation:
++                # >>> s = b'foo'
++                # >>> s[0]
++                # 102
++                # >>> s[0:1]
++                # b'f'
++                left_value = left[i : i + 1]
++                right_value = right[i : i + 1]
++            else:
++                left_value = left[i]
++                right_value = right[i]
++
+             explanation += [
+-                "At index {} diff: {!r} != {!r}".format(i, left[i], right[i])
++                "At index {} diff: {!r} != {!r}".format(i, left_value, right_value)
+             ]
+             break
++
++    if comparing_bytes:
++        # when comparing bytes, it doesn't help to show the "sides contain one or more items"
++        # longer explanation, so skip it
++        return explanation
++
+     len_diff = len_left - len_right
+ 
+     if len_diff:
